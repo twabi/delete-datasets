@@ -120,8 +120,10 @@ const MainForm = (props) => {
         var set = props.dataSet;
         setDataSet(set);
         setDataElements(props.dataElements);
+        setOrgUnits(props.organizationalUnits);
+        setTreeMarkets(props.treeMarkets);
 
-    },[props.dataSet]);
+    },[props.dataElements, props.dataSet]);
 
     const handle = (value, label, extra) => {
         setSearchValue(value)
