@@ -11,14 +11,21 @@ import {
     MDBContainer, MDBModal, MDBModalBody, MDBModalFooter, MDBModalHeader,
     MDBRow,
 } from "mdbreact";
-import {Button, Dropdown, Menu, TreeSelect} from "antd";
+import {Button, DatePicker, Dropdown, Menu, Space, TreeSelect} from "antd";
 import Select from "react-select";
 import {getInstance} from "d2";
-import {DownOutlined} from "@ant-design/icons";
+import {DeleteOutlined, DownOutlined} from "@ant-design/icons";
 import Header from "@dhis2/d2-ui-header-bar"
 
 
+
+var moment = require("moment");
+const { RangePicker } = DatePicker;
+
+
 const MainForm = (props) => {
+
+    var periods = ["Choose By","Week", "Month"];
 
     var orgUnitFilters = ["Filter By", "Markets"];
     const basicAuth = "Basic " + btoa("ahmed:Atwabi@20");
@@ -40,10 +47,66 @@ const MainForm = (props) => {
     const [message, setMessage] = useState("");
     const [messageBody, setMessageBody] = useState("");
     const [summary, setSummary] = useState([]);
+    const [dates, setDates] = useState([]);
+    const [hackValue, setHackValue] = useState();
+    const [range, setRange] = useState(7);
+    const [startDate, setStartDate] = useState(null);
+    const [endDate, setEndDate] = useState(null);
+    const [value, setValue] = useState();
+    const [thisPeriod, setThisPeriod] = useState(periods[0]);
 
     getInstance().then(d2 =>{
         setD2(d2);
     });
+
+    const disabledDate = current => {
+        if (!dates || dates.length === 0) {
+            return false;
+        }
+        const tooLate = dates[0] && current.diff(dates[0], 'days') > range;
+        const tooEarly = dates[1] && dates[1].diff(current, 'days') > range;
+        return tooEarly || tooLate;
+    };
+
+    const onOpenChange = open => {
+        if (open) {
+            setHackValue([]);
+            setDates([]);
+        } else {
+            setHackValue(undefined);
+        }
+    };
+    const handlePeriod = (value) => {
+        setThisPeriod(value);
+        if(value === "Week"){
+            setRange(7);
+        } else if(value === "Month"){
+            setRange(30);
+        } else {
+            setRange(7);
+        }
+    };
+
+
+    const handleDateChange = (selectedValue) => {
+        setValue(selectedValue);
+        const valueOfInput1 = selectedValue && selectedValue[0].format().split("+");
+        const valueOfInput2 = selectedValue && selectedValue[1].format().split("+");
+
+        setStartDate(valueOfInput1[0])
+        setEndDate(valueOfInput2[0])
+    };
+
+
+    const menu = (
+        <Menu>
+            {periods.map((item, index) => (
+                <Menu.Item key={index} onClick={()=>{handlePeriod(item)}}>
+                    {item}
+                </Menu.Item>
+            ))}
+        </Menu>
+    );
 
     const toggle = () => {
         setModal(!modal)
@@ -363,24 +426,51 @@ const MainForm = (props) => {
 
                                             </div>
                                         </MDBCol>
+                                        <MDBCol md={4}>
+                                            <div className="text-left my-3">
+                                                <label className="grey-text ml-2">
+                                                    <strong>Select Start & End Date</strong>
+                                                    <Dropdown overlay={menu} className="ml-3">
+                                                        <Button size="small">{thisPeriod} <DownOutlined /></Button>
+                                                    </Dropdown>
+                                                </label>
+
+                                                <Space direction="vertical" size={12}>
+
+                                                    <RangePicker
+                                                        className="mt-1"
+                                                        style={{ width: "100%" }}
+                                                        value={hackValue || value}
+                                                        disabledDate={disabledDate}
+                                                        size="large"
+                                                        onCalendarChange={val => setDates(val)}
+                                                        onChange={handleDateChange}
+                                                        onOpenChange={onOpenChange}
+                                                    />
+                                                </Space>
+
+                                            </div>
+
+                                        </MDBCol>
                                     </MDBRow>
 
-                                    <MDBRow className="mt-4">
-
-                                    </MDBRow>
 
                                 </MDBContainer>
 
-                                <div className="text-center py-4 mt-2">
-
-                                    <MDBBtn color="cyan" className="text-white" onClick={() => {
-                                        setSummary([])
-                                        toggle();
-                                    }}>
-                                        Delete Enrolments{showLoading ? <div className="spinner-border mx-2 text-white spinner-border-sm" role="status">
-                                        <span className="sr-only">Loading...</span>
-                                    </div> : null}
-                                    </MDBBtn>
+                                <div className="w-100 d-flex justify-content-center py-4 mt-2">
+                                    <Button type="primary"
+                                            className="d-flex align-items-center justify-content-center"
+                                            shape="round"
+                                            icon={<DeleteOutlined />}
+                                            size="large"
+                                            loading={showLoading}
+                                            onClick={() => {
+                                                setSummary([])
+                                                toggle();
+                                            }}
+                                            danger>
+                                        Delete
+                                    </Button>
                                 </div>
 
                             </MDBCardBody>
