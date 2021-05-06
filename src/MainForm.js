@@ -11,7 +11,7 @@ import {
     MDBContainer, MDBModal, MDBModalBody, MDBModalFooter, MDBModalHeader,
     MDBRow,
 } from "mdbreact";
-import {Button, DatePicker, Dropdown, Menu, Space, TreeSelect} from "antd";
+import {Button, Card, DatePicker, Dropdown, Menu, Modal, Space, TreeSelect} from "antd";
 import Select from "react-select";
 import {getInstance} from "d2";
 import {DeleteOutlined, DownOutlined} from "@ant-design/icons";
@@ -20,12 +20,9 @@ import Header from "@dhis2/d2-ui-header-bar"
 
 
 var moment = require("moment");
-const { RangePicker } = DatePicker;
 
 
 const MainForm = (props) => {
-
-    var periods = ["Choose By","Week", "Month"];
 
     var orgUnitFilters = ["Filter By", "Markets"];
     const basicAuth = "Basic " + btoa("ahmed:Atwabi@20");
@@ -47,66 +44,20 @@ const MainForm = (props) => {
     const [message, setMessage] = useState("");
     const [messageBody, setMessageBody] = useState("");
     const [summary, setSummary] = useState([]);
-    const [dates, setDates] = useState([]);
-    const [hackValue, setHackValue] = useState();
-    const [range, setRange] = useState(7);
-    const [startDate, setStartDate] = useState(null);
-    const [endDate, setEndDate] = useState(null);
-    const [value, setValue] = useState();
-    const [thisPeriod, setThisPeriod] = useState(periods[0]);
+    const [selectedDate, setSelectedDate] = useState(null);
 
     getInstance().then(d2 =>{
         setD2(d2);
     });
 
-    const disabledDate = current => {
-        if (!dates || dates.length === 0) {
-            return false;
-        }
-        const tooLate = dates[0] && current.diff(dates[0], 'days') > range;
-        const tooEarly = dates[1] && dates[1].diff(current, 'days') > range;
-        return tooEarly || tooLate;
-    };
-
-    const onOpenChange = open => {
-        if (open) {
-            setHackValue([]);
-            setDates([]);
-        } else {
-            setHackValue(undefined);
-        }
-    };
-    const handlePeriod = (value) => {
-        setThisPeriod(value);
-        if(value === "Week"){
-            setRange(7);
-        } else if(value === "Month"){
-            setRange(30);
-        } else {
-            setRange(7);
-        }
-    };
-
-
-    const handleDateChange = (selectedValue) => {
-        setValue(selectedValue);
-        const valueOfInput1 = selectedValue && selectedValue[0].format().split("+");
-        const valueOfInput2 = selectedValue && selectedValue[1].format().split("+");
-
-        setStartDate(valueOfInput1[0])
-        setEndDate(valueOfInput2[0])
-    };
-
-
-    const menu = (
-        <Menu>
-            {periods.map((item, index) => (
-                <Menu.Item key={index} onClick={()=>{handlePeriod(item)}}>
-                    {item}
-                </Menu.Item>
-            ))}
-        </Menu>
-    );
+    function onChange(date, dateString) {
+        console.log(date, dateString);
+        var momentDate = moment(date);
+        var week = momentDate.format("ww");
+        var year = momentDate.format("YYYY")
+        console.log(year+ "SunW" + (week));
+        setSelectedDate(year+ "SunW" + (week))
+    }
 
     const toggle = () => {
         setModal(!modal)
@@ -123,7 +74,7 @@ const MainForm = (props) => {
         setOrgUnits(props.organizationalUnits);
         setTreeMarkets(props.treeMarkets);
 
-    },[props.dataElements, props.dataSet]);
+    },[props.dataElements, props.dataSet, props.organizationalUnits, props.treeMarkets]);
 
     const handle = (value, label, extra) => {
         setSearchValue(value)
@@ -178,12 +129,11 @@ const MainForm = (props) => {
         setSelectedElement(selectedOption);
     };
 
-    const deleteEnrolment = (enrol) => {
+    const deleteEnrolment = (dataValue) => {
+        var url = `https://covmw.com/namistest/api/dataValues.json?de=${dataValue.de}&co=${dataValue.co}&ds=${dataValue.ds}&ou=${dataValue.ou}&pe=${dataValue.pe}&value=`
 
-        var enrolID = enrol.enrollment;
-        console.log(enrolID);
-        fetch(`https://covmw.com/namistest/api/enrollments/${enrolID}`, {
-            method: 'DELETE',
+        fetch(url, {
+            method: 'POST',
             headers: {
                 'Authorization' : basicAuth,
                 'Content-type': 'application/json',
@@ -194,24 +144,27 @@ const MainForm = (props) => {
             .then(response => response.json())
             .then((result) => {
                 console.log(result);
-                //setMessage("Success");
-                //setMessageBody("The enrollments for the chosen program and orgUnits were successfully deleted");
-                //toggleAlert();
-                setSummary(summary => [...summary, {"enrolment": enrolID, "message" : "Successfully deleted"}]);
+                if(result.httpStatus != null){
+                    setSummary(summary => [...summary, {"name": dataValue.ouName + "-" + dataValue.pe, "message" : "Unable to delete: " + result.message}]);
+                } else {
+                    setSummary(summary => [...summary, {"name": dataValue.ouName + "-" + dataValue.pe, "message" : "Successfully deleted"}]);
+                }
+
 
             })
             .catch((error) => {
-                //setMessage("Error");
-                //setMessageBody("Unable to delete due to an error: " + error)
-                //toggleAlert();
-                setSummary(summary => [...summary, {"enrolment": enrolID, "message" : "Unable to delete due to an error" + error}]);
-
+                console.log(error.message);
+                if(error.message === "Unexpected end of JSON input"){
+                    setSummary(summary => [...summary, {"name": dataValue.ouName + "-" + dataValue.pe, "message" : "Successfully deleted"}]);
+                } else {
+                    setSummary(summary => [...summary, {"name": dataValue.ouName + "-" + dataValue.pe, "message" : "Unable to delete due to an error: " + error.message}]);
+                }
             });
     }
 
-    const functionWithPromise = enrol => { //a function that returns a promise
+    const functionWithPromise = dataValue => { //a function that returns a promise
 
-        deleteEnrolment(enrol);
+        deleteEnrolment(dataValue);
         return message;
     }
 
@@ -223,62 +176,40 @@ const MainForm = (props) => {
         return await Promise.all(list.map(item => anAsyncFunction(item)))
     }
 
-    const handleDeletion = () => {
-        toggle();
-        //setShowLoading(true);
-        //var progID = selectedProgram.id;
-        console.log(flattenedUnits)
-        //console.log(progID);
 
-        if(flattenedUnits.length !== 0  && selectedElement !== null){
-            var programID = selectedElement.id;
+    const deleting = () => {
+        setSummary([]);
+        console.log(selectedElement);
+        console.log(flattenedUnits);
+        console.log(selectedDate);
 
-            var enrollments = [];
+        var categoryOption = selectedElement.dataElement.categoryCombo.categoryOptionCombos[0].id;
+        var elementID = selectedElement.dataElement.id;
+        var dataSetID = dataSet.id;
+        console.log(categoryOption, elementID, dataSetID);
 
-            flattenedUnits.map((unit) => {
-                getInstance()
-                    .then((d2) => {
-                        const endpoint = `enrollments.json?ou=${unit.id}&program=${programID}&fields=enrollment`;
-                        d2.Api.getApi().get(endpoint)
-                            .then((response) => {
-                                console.log(response.enrollments);
-                                enrollments = enrollments.concat(response.enrollments);
-                                //setEnrolArray(enrolArray => [...enrolArray, response.enrollments]);
-                            })
-                            .then(() => {
-                                console.log(enrollments);
-                                if(enrollments.length == 0){
-                                    setMessage("Alert");
-                                    setMessageBody("Unable to delete! No enrolments found for the chosen program or orgUnit.");
-                                    toggleAlert();
-                                }
-                                deleteData(enrollments)
-                                    .then((r) =>{
-                                    setShowLoading(false);
-                                        console.log(summary);
-                                        setMessage("Operation Complete");
-                                        setMessageBody("A summary of enrolments delete operation: ");
-                                        toggleAlert();
-                                }).catch((err) => {
-                                    console.log("an error occurred: " + err);
-                                });
-                            })
-                            .catch((error) => {
-                                console.log(error);
-                            });
-                    }).then(() => {
+        setMessage("Deleting");
+        setMessageBody("Deleting the dataElement - " + selectedElement.dataElement.name + " for " + flattenedUnits.length + " org units");
+        toggleAlert();
 
-                    });
-            });
+        var dataValues = [];
+        flattenedUnits.map((unit) => {
+            var dataValue = {"ds" : dataSetID, "de" : elementID, "pe": selectedDate, "co" : categoryOption, "ou" : unit.id, "ouName" : unit.name}
+            dataValues.push(dataValue);
+        });
 
-            //console.log(enrollments);
-
-
-            /*
-            */
-        } else {
-            console.log("things are null");
-        }
+        deleteData(dataValues)
+            .then((r) =>{
+                setShowLoading(false);
+                console.log(summary);
+                setMessage("Operation Complete");
+                setMessageBody("A summary of the delete operation for the dataElement: " + selectedElement.dataElement.name);
+                //toggleAlert();
+            }).catch((err) => {
+            console.log("an error occurred: " + err);
+            setMessage("An Error Occurred");
+            setMessageBody("Unable to delete due to a strange error : " + err);
+        });
 
 
     }
@@ -316,9 +247,9 @@ const MainForm = (props) => {
     return (
         <div>
             {D2 && <Header className="mb-5" d2={D2}/>}
-                <MDBBox className="mt-5" display="flex" justifyContent="center" >
-                    <MDBCol className="mb-5 mt-5" md="10">
-                        <MDBCard display="flex" justifyContent="center" className="text-xl-center w-100">
+                <MDBBox className="mt-5" display="flex" justifyContent="center" alignItems="center" >
+                    <MDBCol className="mb-5 mt-5 h-100 d-flex justify-content-center align-items-center" md="10">
+                        <MDBCard className="text-xl-center w-100">
                             <MDBCardBody>
                                 <MDBCardTitle>
                                     <strong>Delete Datasets</strong>
@@ -341,32 +272,39 @@ const MainForm = (props) => {
                                         </MDBModalBody>
                                         <MDBModalFooter>
                                             <MDBBtn color="secondary" className="mx-1" onClick={toggle}>Cancel</MDBBtn>
-                                            <MDBBtn color="primary" className="mx-1" onClick={handleDeletion}>Delete</MDBBtn>
+                                            <MDBBtn color="primary" className="mx-1" onClick={() => {deleting(); toggle()}}>Delete</MDBBtn>
                                         </MDBModalFooter>
                                     </MDBModal>
                                 </MDBContainer>
 
                                 <MDBContainer>
-                                    <MDBModal isOpen={alertModal} toggle={toggleAlert} centered size="lg">
-                                        <MDBModalHeader toggle={toggleAlert}>{message}</MDBModalHeader>
-                                        <MDBModalBody>
-                                            <h4 className="mb-3">
+                                    <Modal title={message}
+                                           footer={[
+                                               <Button type="primary" key="ok" onClick={toggleAlert}>
+                                                   Ok
+                                               </Button>,
+                                           ]}
+                                           visible={alertModal} onCancel={toggleAlert} onOk={toggleAlert}>
+                                        <div className="d-flex flex-column">
+                                            <h6 className="mb-3">
                                                 {messageBody}
-                                            </h4>
+                                            </h6>
 
-                                            {summary.map((item) => (
-                                                <MDBCard className="border-dark my-1">
-                                                    <p>Data Element: {item.name}</p>
-                                                    <p>message: {item.message}</p>
-                                                </MDBCard>
+                                            <div>
+                                                {summary.map((item, index) => (
+                                                    <Card bordered={true} title={item.name} key={index} className="my-2 border border-dark">
+                                                        <p>message: {item.message}</p>
+                                                    </Card>
 
-                                            ))}
+                                                ))}
 
-                                            {summary.length == 0 ? <div>
-                                                <p>Found no enrolments to delete</p>
-                                            </div> : null}
-                                        </MDBModalBody>
-                                    </MDBModal>
+                                                {summary.length == 0 ? <div>
+                                                    <p>Found no enrolments to delete</p>
+                                                </div> : null}
+                                            </div>
+
+                                        </div>
+                                    </Modal>
                                 </MDBContainer>
 
                                 <hr/>
@@ -379,7 +317,7 @@ const MainForm = (props) => {
                                                     <strong>Select DataElement</strong>
                                                 </label>
                                                 <Select
-                                                    className="mt-2"
+                                                    className="mt-2 w-100"
                                                     onChange={handleDataElement}
                                                     options={dataElements}
                                                 />
@@ -429,26 +367,16 @@ const MainForm = (props) => {
                                             </div>
                                         </MDBCol>
                                         <MDBCol md={4}>
-                                            <div className="text-left my-3">
+                                            <div className="text-left my-3 d-flex flex-column">
                                                 <label className="grey-text ml-2">
-                                                    <strong>Select Start & End Date</strong>
-                                                    <Dropdown overlay={menu} className="ml-3">
-                                                        <Button size="small">{thisPeriod} <DownOutlined /></Button>
-                                                    </Dropdown>
+                                                    <strong>Select Week</strong>
                                                 </label>
-
                                                 <Space direction="vertical" size={12}>
-
-                                                    <RangePicker
-                                                        className="mt-1"
-                                                        style={{ width: "100%" }}
-                                                        value={hackValue || value}
-                                                        disabledDate={disabledDate}
-                                                        size="large"
-                                                        onCalendarChange={val => setDates(val)}
-                                                        onChange={handleDateChange}
-                                                        onOpenChange={onOpenChange}
-                                                    />
+                                                    <DatePicker className="mt-1"
+                                                                style={{ width: "100%" }}
+                                                                size="large"
+                                                                onChange={onChange}
+                                                                picker="week" />
                                                 </Space>
 
                                             </div>
