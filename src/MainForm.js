@@ -249,15 +249,12 @@ const MainForm = (props) => {
             {D2 && <Header className="mb-5" d2={D2}/>}
                 <MDBBox className="mt-5" display="flex" justifyContent="center" alignItems="center" >
                     <MDBCol className="mb-5 mt-5 h-100 d-flex justify-content-center align-items-center" md="10">
-                        <MDBCard className="text-xl-center w-100">
+                        <Card title={<MDBCardTitle>
+                            <strong>Delete Data Element DataValues</strong>
+                        </MDBCardTitle>} className="text-xl-center h-100 w-100 border border-dark" bordered>
+                            <strong>Select DataElement, Org Unit(s) and Weekly Period</strong>
                             <MDBCardBody>
-                                <MDBCardTitle>
-                                    <strong>Delete Datasets</strong>
-                                </MDBCardTitle>
 
-                                <MDBCardText>
-                                    <strong>Select Dataset details and Org Unit(s)</strong>
-                                </MDBCardText>
 
                                 {dataElements.length == 0 ? <div className="spinner-border mx-2 indigo-text spinner-border-sm" role="status">
                                     <span className="sr-only">Loading...</span>
@@ -307,13 +304,12 @@ const MainForm = (props) => {
                                     </Modal>
                                 </MDBContainer>
 
-                                <hr/>
 
                                 <MDBContainer className="pl-5 mt-3">
                                     <MDBRow>
                                         <MDBCol>
                                             <div className="text-left my-3">
-                                                <label className="grey-text ml-2">
+                                                <label className="grey-text mt-1 ml-2">
                                                     <strong>Select DataElement</strong>
                                                 </label>
                                                 <Select
@@ -368,11 +364,11 @@ const MainForm = (props) => {
                                         </MDBCol>
                                         <MDBCol md={4}>
                                             <div className="text-left my-3 d-flex flex-column">
-                                                <label className="grey-text ml-2">
+                                                <label className="grey-text mt-1 ml-2">
                                                     <strong>Select Week</strong>
                                                 </label>
                                                 <Space direction="vertical" size={12}>
-                                                    <DatePicker className="mt-1"
+                                                    <DatePicker className="mt-2"
                                                                 style={{ width: "100%" }}
                                                                 size="large"
                                                                 onChange={onChange}
@@ -404,7 +400,7 @@ const MainForm = (props) => {
                                 </div>
 
                             </MDBCardBody>
-                        </MDBCard>
+                        </Card>
                     </MDBCol>
                 </MDBBox>
         </div>
